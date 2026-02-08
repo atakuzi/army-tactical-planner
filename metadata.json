@@ -1,0 +1,5 @@
+{
+  "name": "Army Tactical Planner",
+  "description": "A sophisticated tactical planning suite for US Army leaders. Army Tactical Planner utilizes Gemini 3 Pro to synthesize current Army doctrine (ADPs, FMs, ATPs) and assist in the Military Decision Making Process (MDMP), generating comprehensive operational orders and tactical plans.",
+  "requestFramePermissions": []
+}
