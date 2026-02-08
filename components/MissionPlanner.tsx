@@ -40,6 +40,8 @@ const MissionPlanner: React.FC<MissionPlannerProps> = ({ data, updateData, onGen
   const [missionNameSuggestions, setMissionNameSuggestions] = useState<string[]>([]);
 
   useEffect(() => {
+    const updates: Partial<MissionData> = {};
+
     if (!data.coas || data.coas.length === 0) {
       const initialCOA: COA = {
         id: Math.random().toString(36).substring(7),
@@ -49,11 +51,15 @@ const MissionPlanner: React.FC<MissionPlannerProps> = ({ data, updateData, onGen
         unitTasks: [],
         riskMitigation: ''
       };
-      updateData({ ...data, coas: [initialCOA] });
+      updates.coas = [initialCOA];
     }
-    
+
     if (!data.comparisonCriteria || data.comparisonCriteria.length === 0) {
-      updateData({ ...data, comparisonCriteria: [...STANDARD_COMPARISON_CRITERIA] });
+      updates.comparisonCriteria = [...STANDARD_COMPARISON_CRITERIA];
+    }
+
+    if (Object.keys(updates).length > 0) {
+      updateData({ ...data, ...updates });
     }
   }, []);
 
@@ -371,12 +377,25 @@ const MissionPlanner: React.FC<MissionPlannerProps> = ({ data, updateData, onGen
   };
 
   const GuidanceIcon = ({ field }: { field: string }) => (
-    <button 
-      onClick={() => field.startsWith('sustainment') ? fetchSustainmentGuidance(field.replace('sustainment', '') as any) : fetchGuidance(field)}
-      className="ml-2 text-green-600 hover:text-green-400"
-    >
-      {guidingField === field ? <div className="w-3 h-3 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div> : <span className="text-[10px] bg-green-900/20 px-1 py-0.5 rounded font-bold uppercase">AI</span>}
-    </button>
+    <span className="inline-flex items-center">
+      <button
+        onClick={() => field.startsWith('sustainment') ? fetchSustainmentGuidance(field.replace('sustainment', '') as any) : fetchGuidance(field)}
+        className="ml-2 text-green-600 hover:text-green-400"
+      >
+        {guidingField === field ? <div className="w-3 h-3 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div> : <span className="text-[10px] bg-green-900/20 px-1 py-0.5 rounded font-bold uppercase">AI</span>}
+      </button>
+      {fieldGuidance[field] && (
+        <button onClick={() => setFieldGuidance(prev => { const next = { ...prev }; delete next[field]; return next; })} className="ml-1 text-slate-600 hover:text-slate-400 text-[9px]">×</button>
+      )}
+    </span>
+  );
+
+  const GuidanceDisplay = ({ field }: { field: string }) => (
+    fieldGuidance[field] ? (
+      <div className="mt-2 p-3 bg-green-950/30 border border-green-800/30 rounded-lg text-[10px] text-slate-400 italic leading-relaxed whitespace-pre-wrap max-h-40 overflow-y-auto custom-scrollbar">
+        {fieldGuidance[field]}
+      </div>
+    ) : null
   );
 
   const ReviewSection = ({ title, children, editStep }: { title: string, children?: React.ReactNode, editStep: number }) => (
@@ -524,6 +543,15 @@ const MissionPlanner: React.FC<MissionPlannerProps> = ({ data, updateData, onGen
                         </button>
                       </div>
                       <input name="missionName" value={data.missionName} onChange={handleChange} className="w-full bg-slate-950 border border-slate-800 rounded p-3 text-sm focus:border-green-600 outline-none transition-all" placeholder="OP IRON SWORD" />
+                      {missionNameSuggestions.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {missionNameSuggestions.map((name, idx) => (
+                            <button key={idx} onClick={() => { updateData({ ...data, missionName: name }); setMissionNameSuggestions([]); }} className="text-[9px] bg-slate-800 hover:bg-green-900/40 border border-slate-700 hover:border-green-600 px-2 py-1 rounded text-slate-400 hover:text-green-300 transition-all">
+                              {name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <label className="block">
@@ -554,7 +582,8 @@ const MissionPlanner: React.FC<MissionPlannerProps> = ({ data, updateData, onGen
                          </div>
                       </div>
                       <textarea name="commanderIntent" value={data.commanderIntent} onChange={handleChange} rows={6} className="w-full bg-transparent border-none p-4 text-sm font-serif leading-relaxed focus:ring-0 outline-none text-slate-200 placeholder:text-slate-700" placeholder="PURPOSE: Why are we doing this?&#10;KEY TASKS: What critical tasks link purpose to end state?&#10;END STATE: What does success look like (Terrain, Enemy, Civil)?" />
-                      
+                      <GuidanceDisplay field="commanderIntent" />
+
                       {/* Intent Refinement Scorecard Display */}
                       {intentRefinement && (
                         <div className="absolute inset-0 bg-slate-900/95 z-40 p-4 md:p-6 flex flex-col animate-in fade-in zoom-in duration-300 overflow-y-auto custom-scrollbar">
@@ -664,6 +693,7 @@ const MissionPlanner: React.FC<MissionPlannerProps> = ({ data, updateData, onGen
                       <div className="text-xs text-slate-300 italic leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto custom-scrollbar pr-2">
                         {analysis || 'Drafting situational analysis...'}
                       </div>
+                      <GuidanceDisplay field="analysis" />
                     </div>
                     <label className="block">
                       <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Constraints</span>
@@ -681,7 +711,7 @@ const MissionPlanner: React.FC<MissionPlannerProps> = ({ data, updateData, onGen
                     </label>
                     <label className="block">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Facts & Assumptions</span>
-                      <textarea name="questions" value={data.assumptions || ''} onChange={handleChange} rows={4} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs mt-1 outline-none" />
+                      <textarea name="assumptions" value={data.assumptions || ''} onChange={handleChange} rows={4} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs mt-1 outline-none" />
                     </label>
                   </div>
                   <div className="lg:col-span-1 space-y-4">
@@ -887,6 +917,19 @@ const MissionPlanner: React.FC<MissionPlannerProps> = ({ data, updateData, onGen
                     <button onClick={handleAddCriterion} className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all">+ Add Custom</button>
                   </div>
                 </div>
+
+                {suggestedCriteriaList.length > 0 && (
+                  <div className="mb-4 p-3 bg-green-950/30 border border-green-800/40 rounded-lg">
+                    <span className="text-[9px] font-black text-green-500 uppercase tracking-widest block mb-2">AI Suggested Criteria</span>
+                    <div className="flex flex-wrap gap-2">
+                      {suggestedCriteriaList.map((crit, idx) => (
+                        <button key={idx} onClick={() => acceptCriterion(crit)} className="text-[9px] bg-slate-800 hover:bg-green-900/40 border border-slate-700 hover:border-green-600 px-2.5 py-1.5 rounded text-slate-400 hover:text-green-300 transition-all">
+                          + {crit}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="overflow-x-auto flex-1 min-h-[300px]">
                   <table className="w-full text-left text-xs text-slate-400 border-collapse">
